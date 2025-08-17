@@ -1,0 +1,96 @@
+version: '3.8'
+
+services:
+  # User Service with PostgreSQL
+  user-db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: userdb
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - user-db-data:/var/lib/postgresql/data
+
+  user-service:
+    build: ./user-service
+    ports:
+      - "8001:8001"
+    environment:
+      DATABASE_URL: postgresql://user:password@user-db:5432/userdb
+    depends_on:
+      - user-db
+    volumes:
+      - ./user-service:/app
+      - ./shared:/app/shared
+
+  # Product Service with MongoDB
+  product-db:
+    image: mongo:6
+    environment:
+      MONGO_INITDB_DATABASE: product_database
+    ports:
+      - "27017:27017"
+    volumes:
+      - product-db-data:/data/db
+
+  product-service:
+    build: ./product-service
+    ports:
+      - "8002:8002"
+    environment:
+      MONGODB_URL: mongodb://product-db:27017/
+      USER_SERVICE_URL: http://user-service:8001
+    depends_on:
+      - product-db
+      - user-service
+    volumes:
+      - ./product-service:/app
+      - ./shared:/app/shared
+
+  # Order Service with MySQL
+  order-db:
+    image: mysql:8
+    environment:
+      MYSQL_DATABASE: orderdb
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: rootpassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - order-db-data:/var/lib/mysql
+
+  order-service:
+    build: ./order-service
+    ports:
+      - "8003:8003"
+    environment:
+      DATABASE_URL: mysql+pymysql://user:password@order-db:3306/orderdb
+      USER_SERVICE_URL: http://user-service:8001
+      PRODUCT_SERVICE_URL: http://product-service:8002
+    depends_on:
+      - order-db
+      - user-service
+      - product-service
+    volumes:
+      - ./order-service:/app
+      - ./shared:/app/shared
+
+  # API Gateway (using nginx as a simple gateway)
+  api-gateway:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - user-service
+      - product-service
+      - order-service
+
+volumes:
+  user-db-data:
+  product-db-data:
+  order-db-data:

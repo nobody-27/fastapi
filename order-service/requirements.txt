@@ -1,0 +1,8 @@
+fastapi==0.104.1
+uvicorn==0.24.0
+sqlalchemy==2.0.23
+pymysql==1.1.0
+cryptography==41.0.7
+requests==2.31.0
+PyJWT==2.8.0
+passlib[bcrypt]==1.7.4
